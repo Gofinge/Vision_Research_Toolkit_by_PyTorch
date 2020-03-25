@@ -1,4 +1,4 @@
-# Vision Research Tookit by PyTorch
+# Vision Research Toolkit by PyTorch
 
 Why should we build a new framework every time starting a new research? 
 
