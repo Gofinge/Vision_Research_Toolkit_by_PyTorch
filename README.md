@@ -7,6 +7,7 @@ Welcome to VRT by PyTorch!
 + VRT is a high robust PyTorch-based framework for deep learning in computer vision, which aimed at easy-to-use, high efficiency, clean code and research.
 + The dataset in VRT is efficient enough to support all kind of task (seg, det, class, etc..)
 + All the parameters in VRT can be controlled in one config file.
++ VRT support single GPU and multi GPU, but do not support CPU.
 
 
 ## Acknowledgement
