@@ -1,0 +1,5 @@
+MODEL:
+  NAME: 'psp'
+
+SOLVER:
+  NAME: 'adam'

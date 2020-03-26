@@ -5,13 +5,18 @@ Basic training script for PyTorch
 
 import os
 import argparse
-
 import torch
 import torch.distributed
-from utils.communication import synchronize, get_rank
-from utils.common import mkdir
-from configs.build import make_config
+from torch.nn.parallel import DistributedDataParallel, DataParallel
 from time import localtime, strftime
+
+from utils.comm import synchronize, get_rank
+from utils.miscellaneous import mkdir, save_config
+from utils.logger import setup_logger
+from utils.collect_env import collect_env_info
+from configs.build import make_config
+from model.make_model import build_model
+from solver.build import make_optimizer, make_lr_scheduler
 
 
 def main():
@@ -70,13 +75,69 @@ def main():
 
     if cfg.LOADER.CONTINUE:
         cfg.SAVER.DIR = cfg.LOADER.DIR
+        cfg.SAVER.NAME = cfg.LOADER.NAME
     else:
-        # only run the following instruction on GPU 0
-        if get_rank() == 0:
-            if len(cfg.SAVER.NAME) is 0:
-                cfg.SAVER.NAME = strftime("%Y-%m-%d-%H-%M-%S", localtime())
-            mkdir(os.path.join(cfg.SAVER.DIR, cfg.SAVER.NAME))
         cfg.LOADER.DIR = ''
+        cfg.LOADER.NAME = ''
+
+    if len(cfg.SAVER.NAME) is 0:
+        cfg.SAVER.NAME = strftime("%Y-%m-%d-%H-%M-%S", localtime())
 
     cfg.freeze()
 
+    output_dir = os.path.join(cfg.SAVER.DIR, cfg.SAVER.NAME)
+    mkdir(output_dir)
+
+    # Init logger
+    logger = setup_logger(cfg.NAME, output_dir, get_rank())
+    logger.info("Using {} GPU".format(num_gpus))
+    logger.info(args)
+
+    logger.info("Collecting env info ...")
+    logger.info("\n" + collect_env_info())
+
+    logger.info("Loaded configuration file {}".format(args.config_file))
+    logger.info("Running with config:\n{}".format(cfg))
+
+    output_config_path = os.path.join(output_dir, os.path.basename(args.config_file))
+    logger.info("Saving config into: {}".format(output_config_path))
+    # save overloaded model config in the output directory
+    save_config(cfg, output_config_path)
+
+    train(cfg, args.local_rank, args.distributed)
+    return
+
+
+def train(cfg, local_rank, distributed):
+    # build model
+    model = build_model(cfg)
+    device = torch.device(cfg.MODEL.DEVICE)
+    model.to(device)
+
+    # build solver
+    optimizer = make_optimizer(cfg, model)
+    scheduler = make_lr_scheduler(cfg, optimizer)
+
+    if distributed:
+        model = DistributedDataParallel(
+            model, device_ids=[local_rank], output_device=local_rank,
+            # this should be removed if we update BatchNorm stats
+            broadcast_buffers=False,
+        )
+
+    arguments = {}
+    arguments["iteration"] = 0
+
+    output_dir = os.path.join(cfg.SAVER.DIR, cfg.SAVER.NAME)
+
+    save_to_disk = get_rank() == 0
+    checkpointer =
+
+    # TODO: Should we separate Loader.dir and Saver.dir?
+    # load_dir = os.path.join(cfg.LOADER.DIR, cfg.LOADER.NAME)
+    # save_dir = os.path.join(cfg.SAVER.DIR, cfg.LOADER.NAME)
+    # saver = Saver(model, save_dir, load_dir, local_rank)
+
+
+if __name__ == "__main__":
+    main()
