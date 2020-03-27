@@ -11,17 +11,11 @@ _C.SOLVER = CN()
 _C.SOLVER.NAME = "SGD"  # now support "SGD", "Adam"
 
 # Saver
-_C.SAVER = CN()
-_C.SAVER.NAME = ""      # Name of saver in SAVER.NAME, use time as name if name is ""(default)
-_C.SAVER.DIR = "log"        # Dir of saver, support absolute path(Linux and MacOS) and relative path
-_C.SAVER.SAVE_EVERY_EPOCH = 5
-
-# Loader
-_C.LOADER = CN()
-_C.LOADER.NAME = ""
-_C.LOADER.DIR = "log"       # Dir of saver, support absolute path(Linux and MacOS) and relative path
-_C.LOADER.LOAD_EPOCH = 0        # If LOAD_EPOCH is 0, the last checkpoint will be loaded
-_C.LOADER.CONTINUE = False      # If continue is true, the model will start training from loaded checkpoint
+_C.CHECKPOINTER = CN()
+_C.CHECKPOINTER.NAME = ""      # Name of saver in SAVER.NAME, use time as name if name is ""(default)
+_C.CHECKPOINTER.DIR = "log"        # Dir of saver, support absolute path(Linux and MacOS) and relative path
+_C.CHECKPOINTER.SAVE_EPOCH = 5
+_C.CHECKPOINTER.LOAD_NAME = ""  # if load_name is "", the checkpointer will load the latest checkpoint
 
 # Dataset
 _C.DATASET = CN()

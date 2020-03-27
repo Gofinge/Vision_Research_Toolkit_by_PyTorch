@@ -61,31 +61,19 @@ def main():
     # obtain absolute dir of project
     project_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-    if len(cfg.SAVER.DIR) != 0:
-        if cfg.SAVER.DIR[0] is not os.sep:
+    if not cfg.CHECKPOINTER.DIR:
+        if cfg.CHECKPOINTER.DIR[0] is not os.sep:
             # if the saver_dir is not absolute dir
-            cfg.SAVER.DIR = os.path.join(project_dir, cfg.SAVER.DIR)
+            cfg.CHECKPOINTER.DIR = os.path.join(project_dir, cfg.CHECKPOINTER.DIR)
     else:
-        cfg.SAVER.DIR = os.path.join(project_dir, 'log')
+        cfg.CHECKPOINTER.DIR = os.path.join(project_dir, 'log')
 
-    if len(cfg.LOADER.DIR) != 0:
-        if cfg.LOADER.DIR[0] is not os.sep:
-            # if the loader_dir is not absolute dir
-            cfg.LOADER.DIR = os.path.join(project_dir, cfg.LOADER.DIR)
-
-    if cfg.LOADER.CONTINUE:
-        cfg.SAVER.DIR = cfg.LOADER.DIR
-        cfg.SAVER.NAME = cfg.LOADER.NAME
-    else:
-        cfg.LOADER.DIR = ''
-        cfg.LOADER.NAME = ''
-
-    if len(cfg.SAVER.NAME) is 0:
-        cfg.SAVER.NAME = strftime("%Y-%m-%d-%H-%M-%S", localtime())
+    if cfg.CHECKPOINTER.NAME:
+        cfg.CHECKPOINTER.NAME = strftime("%Y-%m-%d-%H-%M-%S", localtime())
 
     cfg.freeze()
 
-    output_dir = os.path.join(cfg.SAVER.DIR, cfg.SAVER.NAME)
+    output_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
     mkdir(output_dir)
 
     # Init logger
@@ -128,15 +116,10 @@ def train(cfg, local_rank, distributed):
     arguments = {}
     arguments["iteration"] = 0
 
-    output_dir = os.path.join(cfg.SAVER.DIR, cfg.SAVER.NAME)
+    output_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
 
     save_to_disk = get_rank() == 0
-    checkpointer =
-
-    # TODO: Should we separate Loader.dir and Saver.dir?
-    # load_dir = os.path.join(cfg.LOADER.DIR, cfg.LOADER.NAME)
-    # save_dir = os.path.join(cfg.SAVER.DIR, cfg.LOADER.NAME)
-    # saver = Saver(model, save_dir, load_dir, local_rank)
+    # checkpointer =
 
 
 if __name__ == "__main__":
