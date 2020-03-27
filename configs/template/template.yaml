@@ -1,0 +1,11 @@
+MODEL:
+  NAME: "model_name"    # Don't forget to register your model
+
+SOLVER:
+  OPTIMIZER:
+    NAME: "adam"    # Necessary
+  SCHEDULER:
+    NAME: "WarmupMultiStepLR"   # Necessary
+
+CHECKPOINTER:
+  DIR: "log/model_name"   # replace model_name with your model name or use default

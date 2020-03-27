@@ -1,5 +1,11 @@
 MODEL:
-  NAME: 'psp'
+  NAME: "psp"
 
 SOLVER:
-  NAME: 'adam'
+  OPTIMIZER:
+    NAME: "adam"
+  SCHEDULER:
+    NAME: "WarmupMultiStepLR"
+
+CHECKPOINTER:
+  DIR: "log/psp_voc"

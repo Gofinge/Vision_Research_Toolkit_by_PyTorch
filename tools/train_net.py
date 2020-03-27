@@ -5,15 +5,17 @@ Basic training script for PyTorch
 
 import os
 import argparse
+import logging
 import torch
 import torch.distributed
-from torch.nn.parallel import DistributedDataParallel, DataParallel
+from torch.nn.parallel import DistributedDataParallel
 from time import localtime, strftime
 
 from utils.comm import synchronize, get_rank
 from utils.miscellaneous import mkdir, save_config
 from utils.logger import setup_logger
 from utils.collect_env import collect_env_info
+from utils.checkpoint import Checkpointer
 from configs.build import make_config
 from model.make_model import build_model
 from solver.build import make_optimizer, make_lr_scheduler
@@ -61,23 +63,23 @@ def main():
     # obtain absolute dir of project
     project_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-    if not cfg.CHECKPOINTER.DIR:
+    if cfg.CHECKPOINTER.DIR:
         if cfg.CHECKPOINTER.DIR[0] is not os.sep:
             # if the saver_dir is not absolute dir
             cfg.CHECKPOINTER.DIR = os.path.join(project_dir, cfg.CHECKPOINTER.DIR)
     else:
         cfg.CHECKPOINTER.DIR = os.path.join(project_dir, 'log')
 
-    if cfg.CHECKPOINTER.NAME:
+    if not cfg.CHECKPOINTER.NAME:
         cfg.CHECKPOINTER.NAME = strftime("%Y-%m-%d-%H-%M-%S", localtime())
 
     cfg.freeze()
 
-    output_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
-    mkdir(output_dir)
+    save_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
+    mkdir(save_dir)
 
     # Init logger
-    logger = setup_logger(cfg.NAME, output_dir, get_rank())
+    logger = setup_logger(cfg.NAME, save_dir, get_rank())
     logger.info("Using {} GPU".format(num_gpus))
     logger.info(args)
 
@@ -87,7 +89,7 @@ def main():
     logger.info("Loaded configuration file {}".format(args.config_file))
     logger.info("Running with config:\n{}".format(cfg))
 
-    output_config_path = os.path.join(output_dir, os.path.basename(args.config_file))
+    output_config_path = os.path.join(save_dir, os.path.basename(args.config_file))
     logger.info("Saving config into: {}".format(output_config_path))
     # save overloaded model config in the output directory
     save_config(cfg, output_config_path)
@@ -97,6 +99,7 @@ def main():
 
 
 def train(cfg, local_rank, distributed):
+    logger = logging.getLogger(cfg.NAME)
     # build model
     model = build_model(cfg)
     device = torch.device(cfg.MODEL.DEVICE)
@@ -113,13 +116,19 @@ def train(cfg, local_rank, distributed):
             broadcast_buffers=False,
         )
 
-    arguments = {}
-    arguments["iteration"] = 0
+    arguments = {"iteration": 0}
 
-    output_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
+    save_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
 
     save_to_disk = get_rank() == 0
-    # checkpointer =
+    checkpointer = Checkpointer(
+        model=model, optimizer=optimizer, scheduler=scheduler,
+        save_dir=save_dir, save_to_disk=save_to_disk, logger=logger
+    )
+    extra_checkpoint_data = checkpointer.load(cfg.CHECKPOINTER.LOAD_NAME)
+    arguments.update(extra_checkpoint_data)
+
+    # data_loader = make_data_loader()
 
 
 if __name__ == "__main__":

@@ -8,9 +8,13 @@ _C.NAME = "VRT by PyTorch"      # Which will be the name of logger
 
 # Solver
 _C.SOLVER = CN()
-_C.SOLVER.NAME = "SGD"  # now support "SGD", "Adam"
+_C.SOLVER.IMS_PER_BATCH = 1
+_C.SOLVER.OPTIMIZER = CN()
+_C.SOLVER.OPTIMIZER.NAME = "SGD"  # now support "SGD", "Adam"
+_C.SOLVER.SCHEDULER = CN()
+_C.SOLVER.SCHEDULER.NAME = "WarmupMultiStepLR"  # now only support "WarmupMultiStepLR"
 
-# Saver
+# CheckPointer
 _C.CHECKPOINTER = CN()
 _C.CHECKPOINTER.NAME = ""      # Name of saver in SAVER.NAME, use time as name if name is ""(default)
 _C.CHECKPOINTER.DIR = "log"        # Dir of saver, support absolute path(Linux and MacOS) and relative path
@@ -33,26 +37,37 @@ _C.MODEL.NAME = ""
 
 MODEL_CONFIG = Registry()
 OPTIMIZER_CONFIG = Registry()
+SCHEDULER_CONFIG = Registry()
 
 MODEL = Registry()
 OPTIMIZER = Registry()
+SCHEDULER = Registry()
 
 
 @OPTIMIZER_CONFIG.register("SGD")
 def get_optimizer_config():
-    _C.SOLVER.BASE_LR = 0.001
-    _C.SOLVER.BIAS_LR_FACTOR = 2
-    _C.SOLVER.MOMENTUM = 0.9
-    _C.SOLVER.WEIGHT_DECAY = 0.0005
-    _C.SOLVER.WEIGHT_DECAY_BIAS = 0
+    _C.SOLVER.OPTIMIZER.BASE_LR = 0.001
+    _C.SOLVER.OPTIMIZER.BIAS_LR_FACTOR = 2
+    _C.SOLVER.OPTIMIZER.MOMENTUM = 0.9
+    _C.SOLVER.OPTIMIZER.WEIGHT_DECAY = 0.0005
+    _C.SOLVER.OPTIMIZER.WEIGHT_DECAY_BIAS = 0
 
 
 @OPTIMIZER_CONFIG.register("ADAM")
 def get_optimizer_config():
-    _C.SOLVER.BASE_LR = 0.001
-    _C.SOLVER.BETAS = (0.9, 0.999)
-    _C.SOLVER.EPS = 1e-08
-    _C.SOLVER.WEIGHT_DECAY = 0.0005
+    _C.SOLVER.OPTIMIZER.BASE_LR = 0.001
+    _C.SOLVER.OPTIMIZER.BETAS = (0.9, 0.999)
+    _C.SOLVER.OPTIMIZER.EPS = 1e-08
+    _C.SOLVER.OPTIMIZER.WEIGHT_DECAY = 0.0005
+
+
+@SCHEDULER_CONFIG.register("WARMUPMULTISTEPLR")
+def get_scheduler_config():
+    _C.SOLVER.SCHEDULER.STEPS = (30000, )
+    _C.SOLVER.SCHEDULER.GAMMA = 0.1
+    _C.SOLVER.SCHEDULER.WARMUP_FACTOR = 1.0 / 3
+    _C.SOLVER.SCHEDULER.WARMUP_ITERS = 500
+    _C.SOLVER.SCHEDULER.WARMUP_METHOD = "linear"
 
 
 @MODEL_CONFIG.register("PSP")
