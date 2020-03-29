@@ -19,6 +19,8 @@ from utils.checkpoint import Checkpointer
 from configs.build import make_config
 from model.make_model import build_model
 from solver.build import make_optimizer, make_lr_scheduler
+from data.build import make_data_loader
+from engine.trainer import do_train
 
 
 def main():
@@ -128,7 +130,36 @@ def train(cfg, local_rank, distributed):
     extra_checkpoint_data = checkpointer.load(cfg.CHECKPOINTER.LOAD_NAME)
     arguments.update(extra_checkpoint_data)
 
-    # data_loader = make_data_loader()
+    data_loader = make_data_loader(
+        cfg,
+        is_train=True,
+        is_distributed=distributed,
+        start_iter=arguments["iteration"],
+    )
+
+    test_period = cfg.SOLVER.TEST_PERIOD
+    if test_period > 0:
+        data_loader_val = make_data_loader(cfg, is_train=False, is_distributed=distributed, is_for_period=True)
+    else:
+        data_loader_val = None
+
+    checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
+
+    do_train(
+        cfg,
+        model,
+        data_loader,
+        data_loader_val,
+        optimizer,
+        scheduler,
+        checkpointer,
+        device,
+        checkpoint_period,
+        test_period,
+        arguments,
+    )
+
+    return model
 
 
 if __name__ == "__main__":
