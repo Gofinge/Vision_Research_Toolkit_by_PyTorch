@@ -6,7 +6,8 @@ from configs.defaults import TRANSFORMS
 # TODO: Rebuild Transform module, make it controlled by config file!!!
 @TRANSFORMS.register('voc')
 class GeneralTransform(object):
-    def __init__(self, cfg):
+    def __init__(self, cfg, is_train=True):
+        self.is_train = is_train
         self.mean = cfg.INPUT.PIXEL_MEAN
         self.mean = [item * 255 for item in self.mean]
         self.std = cfg.INPUT.PIXEL_STD
@@ -29,18 +30,18 @@ class GeneralTransform(object):
             Normalize(mean=self.mean, std=self.std)
         ])
 
-    def __call__(self, record, is_train=True):
-        if is_train:
+    def __call__(self, record):
+        if self.is_train:
             record = self.train_compose(**record)
         else:
             record = self.val_compose(**record)
         return record
 
 
-def build_transforms(cfg):
+def build_transforms(cfg, is_train):
     assert cfg.DATASET.NAME.upper() in TRANSFORMS, \
         "cfg.DATASET.NAME: {} are not registered in TRANSFORMS registry".format(
             cfg.DATASET.NAME.upper
         )
 
-    return TRANSFORMS[cfg.DATASET.NAME.upper](cfg)
+    return TRANSFORMS[cfg.DATASET.NAME.upper](cfg, is_train)

@@ -30,11 +30,11 @@ _C.CHECKPOINTER.SAVE_EPOCH = 5
 _C.CHECKPOINTER.LOAD_NAME = ""  # if load_name is "", the checkpointer will load the latest checkpoint
 
 # Dataset
-_C.DATASET = CN()
-_C.DATASET.NAME = ""
+_C.DATASETS = CN()
+_C.DATASETS.NAME = ""
 _C.DATASETS.TRAIN = ()      # TrainSet name in path_catalog.py
 _C.DATASETS.TEST = ()       # TestSet name in path_catalog.py
-_C.DATASET.DATA_TYPE = []   # ["mask", "bbox", "keypoint"]
+_C.DATASETS.DATA_TYPE = []   # ["mask", "bbox", "keypoint"]
 
 # DataLoader
 _C.DATALOADER = CN()
