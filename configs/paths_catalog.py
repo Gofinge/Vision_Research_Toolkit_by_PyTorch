@@ -5,7 +5,7 @@ from copy import deepcopy
 
 
 class DatasetCatalog(object):
-    DATA_DIR = "datasets"
+    DATA_DIR = "../data/datasets"
     DATASETS = {
         "voc_2007_train": {
             "data_dir": "voc/VOC2007",
