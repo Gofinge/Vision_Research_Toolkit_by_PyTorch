@@ -1,18 +1,26 @@
 # Author: Xiaoyang Wu (gofinge@foxmail.com)
 
+import os
 from yacs.config import CfgNode as CN
 from utils.registry import Registry
 
+# Miscellaneous
 _C = CN()
 _C.NAME = "VRT by PyTorch"      # Which will be the name of logger
+_C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
 
 # Solver
 _C.SOLVER = CN()
-_C.SOLVER.IMS_PER_BATCH = 1
+_C.SOLVER.IMS_PER_BATCH = 8
+_C.SOLVER.MAX_ITER = 100000
 _C.SOLVER.OPTIMIZER = CN()
 _C.SOLVER.OPTIMIZER.NAME = "SGD"  # now support "SGD", "Adam"
 _C.SOLVER.SCHEDULER = CN()
 _C.SOLVER.SCHEDULER.NAME = "WarmupMultiStepLR"  # now only support "WarmupMultiStepLR"
+
+# Test
+_C.TEST = CN()
+_C.TEST.IMS_PER_BATCH = 8
 
 # CheckPointer
 _C.CHECKPOINTER = CN()
@@ -24,11 +32,17 @@ _C.CHECKPOINTER.LOAD_NAME = ""  # if load_name is "", the checkpointer will load
 # Dataset
 _C.DATASET = CN()
 _C.DATASET.NAME = ""
-_C.DATASET.DATA_TYPE = []
+_C.DATASETS.TRAIN = ()      # TrainSet name in path_catalog.py
+_C.DATASETS.TEST = ()       # TestSet name in path_catalog.py
+_C.DATASET.DATA_TYPE = []   # ["mask", "bbox", "keypoint"]
 
 # DataLoader
 _C.DATALOADER = CN()
 _C.DATALOADER.NUM_WORKER = 4
+# If True, each batch should contain only images for which the aspect ratio
+# is compatible. This groups portrait images together, and landscape images
+# are not batched with portrait images.
+_C.DATALOADER.ASPECT_RATIO_GROUPING = False
 
 # Model
 _C.MODEL = CN()
@@ -42,6 +56,7 @@ SCHEDULER_CONFIG = Registry()
 MODEL = Registry()
 OPTIMIZER = Registry()
 SCHEDULER = Registry()
+TRANSFORMS = Registry()
 
 
 @OPTIMIZER_CONFIG.register("SGD")
