@@ -24,7 +24,6 @@ from data.build import make_data_loader
 from engine.trainer import do_train
 
 
-
 def main():
     # Add augments
     parser = argparse.ArgumentParser(description="Vision Research Toolkit by PyTorch")

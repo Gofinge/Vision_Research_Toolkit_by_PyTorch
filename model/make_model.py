@@ -1,3 +1,4 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 from configs.defaults import MODEL
 
 

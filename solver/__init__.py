@@ -1,3 +1,4 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 from .build import make_optimizer
 from .build import make_lr_scheduler
 from .lr_scheduler import WarmupMultiStepLR

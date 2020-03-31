@@ -1,7 +1,7 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 """Centralized catalog of paths."""
 
 import os
-from copy import deepcopy
 
 
 class DatasetCatalog(object):

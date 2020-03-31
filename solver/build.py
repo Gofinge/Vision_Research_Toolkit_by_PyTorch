@@ -1,3 +1,4 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 import torch
 from configs.defaults import OPTIMIZER, SCHEDULER
 from .lr_scheduler import WarmupMultiStepLR

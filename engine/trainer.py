@@ -1,3 +1,4 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 import logging
 import time
 import torch
@@ -64,6 +65,7 @@ def do_train(
         bar.set_postfix(loss)
 
         if iteration % cfg.SOLVER.LOGGER_PERIOD == 0 or iteration == max_iter:
+            bar.clear(nolock=True)
             logger.info(
                 meters.delimiter.join(
                     [
@@ -94,6 +96,7 @@ def do_train(
         if iteration == max_iter:
             checkpointer.save("model_final", **arguments)
 
+    bar.close()
     total_training_time = time.time() - start_training_time
     total_time_str = str(datetime.timedelta(seconds=total_training_time))
     logger.info(

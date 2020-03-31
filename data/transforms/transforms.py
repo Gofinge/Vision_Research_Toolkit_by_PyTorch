@@ -1,3 +1,4 @@
+# Author: Xiaoyang Wu (gofinge@foxmail.com)
 import torch
 import numpy as np
 import cv2
@@ -9,14 +10,15 @@ from configs.defaults import TRANSFORM
 
 
 class Compose(object):
-    # Composes data_transforms: data_transform.Compose([data_transform.RandScale([0.5, 2.0]), data_transform.ToTensor()])
+    # Composes data_transforms: data_transform.Compose([data_transform.RandScale([0.5, 2.0]),
+    # data_transform.ToTensor()])
     def __init__(self, data_transform):
         self.data_transform = data_transform
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         for t in self.data_transform:
-            input = t(**input)
-        return input
+            record = t(**record)
+        return record
 
 
 @TRANSFORM.register('ColorJitter')
@@ -31,10 +33,10 @@ class ColorJitter(object):
         self.hue = [center - hue, center + hue]
         self.hue[0] = max(self.hue[0], 0)
 
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        image = input['image']
+        image = record['image']
 
         brightness_factor = random.uniform(self.brightness[0], self.brightness[1])
         image = self.adjust_brightness(image, brightness_factor)
@@ -48,8 +50,8 @@ class ColorJitter(object):
         hue_factor = random.uniform(self.hue[0], self.hue[1])
         image = self.adjust_hue(image, hue_factor)
 
-        input['image'] = image
-        return input
+        record['image'] = image
+        return record
 
     def adjust_brightness(self, img, brightness_factor):
         im = img.astype(np.float32) * brightness_factor
@@ -80,17 +82,17 @@ class ColorJitter(object):
 
 class ToTensor(object):
     # Converts numpy.ndarray (H x W x C) to a torch.FloatTensor of shape (C x H x W).
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = torch.from_numpy(input[key].transpose(2, 0, 1))
-                if not isinstance(input[key], torch.FloatTensor):
-                    input[key] = input[key].float()
+                record[key] = torch.from_numpy(record[key].transpose(2, 0, 1))
+                if not isinstance(record[key], torch.FloatTensor):
+                    record[key] = record[key].float()
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = torch.from_numpy(np.array(input[key])).long()
+                if record[key] is not None:
+                    record[key] = torch.from_numpy(np.array(record[key])).long()
             elif key == 'bbox':
                 pass
             elif key == 'keypoint':
@@ -98,7 +100,7 @@ class ToTensor(object):
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
 
-        return input
+        return record
 
 
 class Normalize(object):
@@ -111,16 +113,16 @@ class Normalize(object):
         self.mean = mean
         self.std = std
 
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
         if self.std is None:
-            for t, m in zip(input['image'], self.mean):
+            for t, m in zip(record['image'], self.mean):
                 t.sub_(m)
         else:
-            for t, m, s in zip(input['image'], self.mean, self.std):
+            for t, m, s in zip(record['image'], self.mean, self.std):
                 t.sub_(m).div_(s)
-        return input
+        return record
 
 
 @TRANSFORM.register('Resize')
@@ -166,34 +168,34 @@ class Resize(object):
 
         return (oh, ow)
 
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
         if self.mode == "mm":
-            h, w, _ = input['image'].shape
+            h, w, _ = record['image'].shape
             size = self._get_size((h, w))
         else:
             size = (self.width, self.height)
 
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = cv2.resize(input[key], size, interpolation=cv2.INTER_LINEAR)
+                record[key] = cv2.resize(record[key], size, interpolation=cv2.INTER_LINEAR)
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].resize(size)
+                if record[key] is not None:
+                    record[key] = record[key].resize(size)
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.resize(input[key], size, interpolation=cv2.INTER_NEAREST)
+                if record[key] is not None:
+                    record[key] = cv2.resize(record[key], size, interpolation=cv2.INTER_NEAREST)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
+                if record[key] is not None and record[key].size:
                     scale_factor_x = size[1] / w
                     scale_factor_y = size[0] / h
-                    input[key] = input[key] * [scale_factor_x, scale_factor_y]
+                    record[key] = record[key] * [scale_factor_x, scale_factor_y]
 
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
 
-        return input
+        return record
 
 
 @TRANSFORM.register('RandScale')
@@ -216,7 +218,7 @@ class RandScale(object):
         else:
             raise (RuntimeError("data_transform.RandScale() aspect_ratio param error.\n"))
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         temp_scale = self.scale[0] + (self.scale[1] - self.scale[0]) * random.random()
         temp_aspect_ratio = 1.0
         if self.aspect_ratio is not None:
@@ -225,24 +227,24 @@ class RandScale(object):
         scale_factor_x = temp_scale * temp_aspect_ratio
         scale_factor_y = temp_scale / temp_aspect_ratio
 
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = cv2.resize(input[key], None, fx=scale_factor_x, fy=scale_factor_y,
-                                        interpolation=cv2.INTER_LINEAR)
+                record[key] = cv2.resize(record[key], None, fx=scale_factor_x, fy=scale_factor_y,
+                                         interpolation=cv2.INTER_LINEAR)
             elif key == 'bbox':
-                if input[key] is not None:
-                    w, h = input[key].size
-                    input[key] = input[key].resize((scale_factor_x * w, scale_factor_y * h))
+                if record[key] is not None:
+                    w, h = record[key].size
+                    record[key] = record[key].resize((scale_factor_x * w, scale_factor_y * h))
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.resize(input[key], None, fx=scale_factor_x, fy=scale_factor_y,
-                                            interpolation=cv2.INTER_NEAREST)
+                if record[key] is not None:
+                    record[key] = cv2.resize(record[key], None, fx=scale_factor_x, fy=scale_factor_y,
+                                             interpolation=cv2.INTER_NEAREST)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    input[key] = input[key] * [scale_factor_x, scale_factor_y]
+                if record[key] is not None and record[key].size:
+                    record[key] = record[key] * [scale_factor_x, scale_factor_y]
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
-        return input
+        return record
 
 
 @TRANSFORM.register('PaddingAndResize')
@@ -284,10 +286,10 @@ class PaddingAndResize(object):
         else:
             raise (RuntimeError("ignore_label should be an integer number\n"))
 
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        h, w, _ = input['image'].shape
+        h, w, _ = record['image'].shape
         if (h * 1.0 / w) >= (self.hw_scale):
             crop_w = round(h * 1.0 / self.hw_scale)
             crop_h = h
@@ -302,48 +304,48 @@ class PaddingAndResize(object):
         if pad_h > 0 or pad_w > 0:
             if self.padding is None:
                 raise (RuntimeError("data_transform.Crop() need padding while padding argument is None\n"))
-            for key in input:
+            for key in record:
                 if key == 'image':
-                    input[key] = cv2.copyMakeBorder(input[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
-                                                    pad_w - pad_w_half, cv2.BORDER_CONSTANT, value=self.padding)
+                    record[key] = cv2.copyMakeBorder(record[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
+                                                     pad_w - pad_w_half, cv2.BORDER_CONSTANT, value=self.padding)
                 elif key == 'bbox':
-                    if input[key] is not None:
-                        input[key] = input[key].padding((pad_w_half, pad_h_half))
+                    if record[key] is not None:
+                        record[key] = record[key].padding((pad_w_half, pad_h_half))
                 elif key == 'mask':
-                    if input[key] is not None:
-                        input[key] = cv2.copyMakeBorder(input[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
-                                                        pad_w - pad_w_half, cv2.BORDER_CONSTANT,
-                                                        value=self.ignore_label)
+                    if record[key] is not None:
+                        record[key] = cv2.copyMakeBorder(record[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
+                                                         pad_w - pad_w_half, cv2.BORDER_CONSTANT,
+                                                         value=self.ignore_label)
                 elif key == 'keypoint':
-                    if input[key] is not None and input[key].size:
-                        origin_shape = input[key].shape
-                        input[key] = np.reshape(input[key], (-1, 2))
-                        input[key] += [pad_w_half, pad_h_half]
-                        input[key] = np.reshape(input[key], origin_shape)
+                    if record[key] is not None and record[key].size:
+                        origin_shape = record[key].shape
+                        record[key] = np.reshape(record[key], (-1, 2))
+                        record[key] += [pad_w_half, pad_h_half]
+                        record[key] = np.reshape(record[key], origin_shape)
                 else:
                     raise ValueError('Unknown type of data source, can not be transformed.')
 
-        h, w, _ = input['image'].shape
+        h, w, _ = record['image'].shape
         scale_factor_x = self.crop_w / w
         scale_factor_y = self.crop_h / h
 
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = cv2.resize(input[key], (self.crop_w, self.crop_h),
-                                        interpolation=cv2.INTER_LINEAR)
+                record[key] = cv2.resize(record[key], (self.crop_w, self.crop_h),
+                                         interpolation=cv2.INTER_LINEAR)
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].resize((self.crop_w, self.crop_h))
+                if record[key] is not None:
+                    record[key] = record[key].resize((self.crop_w, self.crop_h))
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.resize(input[key], (self.crop_w, self.crop_h),
-                                            interpolation=cv2.INTER_NEAREST)
+                if record[key] is not None:
+                    record[key] = cv2.resize(record[key], (self.crop_w, self.crop_h),
+                                             interpolation=cv2.INTER_NEAREST)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    input[key] = input[key] * [scale_factor_x, scale_factor_y]
+                if record[key] is not None and record[key].size:
+                    record[key] = record[key] * [scale_factor_x, scale_factor_y]
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
-        return input
+        return record
 
 
 @TRANSFORM.register('Crop')
@@ -393,10 +395,10 @@ class Crop(object):
         else:
             raise (RuntimeError("is_remove_empty should be boolean type\n"))
 
-    def __call__(self, **input):
-        if 'image' not in input:
+    def __call__(self, **record):
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        h, w, _ = input['image'].shape
+        h, w, _ = record['image'].shape
         pad_h = max(self.crop_h - h, 0)
         pad_w = max(self.crop_w - w, 0)
         pad_h_half = int(pad_h / 2)
@@ -405,28 +407,28 @@ class Crop(object):
         if pad_h > 0 or pad_w > 0:
             if self.padding is None:
                 raise (RuntimeError("data_transform.Crop() need padding while padding argument is None\n"))
-            for key in input:
+            for key in record:
                 if key == 'image':
-                    input[key] = cv2.copyMakeBorder(input[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
-                                                    pad_w - pad_w_half, cv2.BORDER_CONSTANT, value=self.padding)
+                    record[key] = cv2.copyMakeBorder(record[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
+                                                     pad_w - pad_w_half, cv2.BORDER_CONSTANT, value=self.padding)
                 elif key == 'bbox':
-                    if input[key] is not None:
-                        input[key] = input[key].padding((pad_w_half, pad_h_half))
+                    if record[key] is not None:
+                        record[key] = record[key].padding((pad_w_half, pad_h_half))
                 elif key == 'mask':
-                    if input[key] is not None:
-                        input[key] = cv2.copyMakeBorder(input[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
-                                                        pad_w - pad_w_half, cv2.BORDER_CONSTANT,
-                                                        value=self.ignore_label)
+                    if record[key] is not None:
+                        record[key] = cv2.copyMakeBorder(record[key], pad_h_half, pad_h - pad_h_half, pad_w_half,
+                                                         pad_w - pad_w_half, cv2.BORDER_CONSTANT,
+                                                         value=self.ignore_label)
                 elif key == 'keypoint':
-                    if input[key] is not None and input[key].size:
-                        origin_shape = input[key].shape
-                        input[key] = np.reshape(input[key], (-1, 2))
-                        input[key] += [pad_w_half, pad_h_half]
-                        input[key] = np.reshape(input[key], origin_shape)
+                    if record[key] is not None and record[key].size:
+                        origin_shape = record[key].shape
+                        record[key] = np.reshape(record[key], (-1, 2))
+                        record[key] += [pad_w_half, pad_h_half]
+                        record[key] = np.reshape(record[key], origin_shape)
                 else:
                     raise ValueError('Unknown type of data source, can not be transformed.')
 
-        h, w, _ = input['image'].shape
+        h, w, _ = record['image'].shape
         if self.crop_type == 'rand':
             h_off = random.randint(0, h - self.crop_h)
             w_off = random.randint(0, w - self.crop_w)
@@ -434,27 +436,27 @@ class Crop(object):
             h_off = int((h - self.crop_h) / 2)
             w_off = int((w - self.crop_w) / 2)
 
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = input[key][h_off:h_off + self.crop_h, w_off:w_off + self.crop_w]
+                record[key] = record[key][h_off:h_off + self.crop_h, w_off:w_off + self.crop_w]
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].crop((w_off, h_off, w_off + self.crop_w, h_off + self.crop_h),
-                                                 self.is_remove_emoty)
+                if record[key] is not None:
+                    record[key] = record[key].crop((w_off, h_off, w_off + self.crop_w, h_off + self.crop_h),
+                                                   self.is_remove_emoty)
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = input[key][h_off:h_off + self.crop_h, w_off:w_off + self.crop_w]
+                if record[key] is not None:
+                    record[key] = record[key][h_off:h_off + self.crop_h, w_off:w_off + self.crop_w]
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    origin_shape = input[key].shape
-                    input[key] = np.reshape(input[key], (-1, 2))
-                    input[key] -= [w_off, h_off]
-                    input[key] = np.reshape(input[key], origin_shape)
+                if record[key] is not None and record[key].size:
+                    origin_shape = record[key].shape
+                    record[key] = np.reshape(record[key], (-1, 2))
+                    record[key] -= [w_off, h_off]
+                    record[key] = np.reshape(record[key], origin_shape)
 
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
 
-        return input
+        return record
 
 
 @TRANSFORM.register('RandomSampleCrop')
@@ -568,7 +570,8 @@ class RandomSampleCrop(object):
                         raise ValueError('Unknown type of data source, can not be transformed.')
                 return record
 
-    def intersect(self, box_a, box_b):
+    @staticmethod
+    def intersect(box_a, box_b):
         max_xy = np.minimum(box_a[:, 2:], box_b[2:])
         min_xy = np.maximum(box_a[:, :2], box_b[:2])
         inter = np.clip((max_xy - min_xy), a_min=0, a_max=np.inf)
@@ -646,40 +649,40 @@ class RandRotate(object):
         self.ignore_label = ignore_label
         self.p = p
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         if random.random() > self.p:
-            return input
+            return record
 
         angle = self.rotate[0] + (self.rotate[1] - self.rotate[0]) * random.random()
-        if 'image' not in input:
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        h, w, _ = input['image'].shape
+        h, w, _ = record['image'].shape
         matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1)
-        for key in input:
+        for key in record:
             if key == 'image':
-                input[key] = cv2.warpAffine(input[key], matrix, (w, h), flags=cv2.INTER_LINEAR,
-                                            borderMode=cv2.BORDER_CONSTANT,
-                                            borderValue=self.padding)
+                record[key] = cv2.warpAffine(record[key], matrix, (w, h), flags=cv2.INTER_LINEAR,
+                                             borderMode=cv2.BORDER_CONSTANT,
+                                             borderValue=self.padding)
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.warpAffine(input[key], matrix, (w, h), flags=cv2.INTER_NEAREST,
-                                                borderMode=cv2.BORDER_CONSTANT,
-                                                borderValue=self.ignore_label)
+                if record[key] is not None:
+                    record[key] = cv2.warpAffine(record[key], matrix, (w, h), flags=cv2.INTER_NEAREST,
+                                                 borderMode=cv2.BORDER_CONSTANT,
+                                                 borderValue=self.ignore_label)
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].rotate(angle, matrix)
+                if record[key] is not None:
+                    record[key] = record[key].rotate(angle, matrix)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    origin_shape = input[key].shape
-                    input[key] = np.reshape(input[key], (-1, 2))
-                    for point in input[key]:
+                if record[key] is not None and record[key].size:
+                    origin_shape = record[key].shape
+                    record[key] = np.reshape(record[key], (-1, 2))
+                    for point in record[key]:
                         point[0], point[1] = self.point_rotate(point[0], point[1], matrix)
-                    input[key] = np.reshape(input[key], origin_shape)
+                    record[key] = np.reshape(record[key], origin_shape)
 
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
 
-        return input
+        return record
 
     def point_rotate(self, x, y, matrix):
         new_x = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2]
@@ -692,33 +695,33 @@ class RandomHorizontalFlip(object):
     def __init__(self, p=0.5):
         self.p = p
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         if random.random() > self.p:
-            return input
+            return record
 
-        if 'image' not in input:
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        _, w, _ = input['image'].shape
-        for key in input:
+        _, w, _ = record['image'].shape
+        for key in record:
             if key == 'image':
-                input[key] = cv2.flip(input[key], 1)
+                record[key] = cv2.flip(record[key], 1)
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].transpose(0)
+                if record[key] is not None:
+                    record[key] = record[key].transpose(0)
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.flip(input[key], 1)
+                if record[key] is not None:
+                    record[key] = cv2.flip(record[key], 1)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    origin_shape = input[key].shape
-                    input[key] = np.reshape(input[key], (-1, 2))
-                    for point in input[key]:
+                if record[key] is not None and record[key].size:
+                    origin_shape = record[key].shape
+                    record[key] = np.reshape(record[key], (-1, 2))
+                    for point in record[key]:
                         point[0] = w - point[0]
-                    input[key] = np.reshape(input[key], origin_shape)
+                    record[key] = np.reshape(record[key], origin_shape)
 
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
-        return input
+        return record
 
 
 @TRANSFORM.register('RandomVerticalFlip')
@@ -726,33 +729,33 @@ class RandomVerticalFlip(object):
     def __init__(self, p=0.5):
         self.p = p
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         if random.random() > self.p:
-            return input
+            return record
 
-        if 'image' not in input:
+        if 'image' not in record:
             raise IOError('Image not in data source.')
-        h, _, _ = input['image'].shape
-        for key in input:
+        h, _, _ = record['image'].shape
+        for key in record:
             if key == 'image':
-                input[key] = cv2.flip(input[key], 0)
+                record[key] = cv2.flip(record[key], 0)
             elif key == 'bbox':
-                if input[key] is not None:
-                    input[key] = input[key].transpose(1)
+                if record[key] is not None:
+                    record[key] = record[key].transpose(1)
             elif key == 'mask':
-                if input[key] is not None:
-                    input[key] = cv2.flip(input[key], 0)
+                if record[key] is not None:
+                    record[key] = cv2.flip(record[key], 0)
             elif key == 'keypoint':
-                if input[key] is not None and input[key].size:
-                    origin_shape = input[key].shape
-                    input[key] = np.reshape(input[key], (-1, 2))
-                    for point in input[key]:
+                if record[key] is not None and record[key].size:
+                    origin_shape = record[key].shape
+                    record[key] = np.reshape(record[key], (-1, 2))
+                    for point in record[key]:
                         point[1] = h - point[1]
-                    input[key] = np.reshape(input[key], origin_shape)
+                    record[key] = np.reshape(record[key], origin_shape)
 
             else:
                 raise ValueError('Unknown type of data source, can not be transformed.')
-        return input
+        return record
 
 
 @TRANSFORM.register('RandomGaussianBlur')
@@ -760,26 +763,12 @@ class RandomGaussianBlur(object):
     def __init__(self, radius=5):
         self.radius = radius
 
-    def __call__(self, **input):
+    def __call__(self, **record):
         if random.random() < 0.5:
-            if 'image' not in input:
+            if 'image' not in record:
                 raise IOError('Image not in data source.')
-            input['image'] = cv2.GaussianBlur(input['image'], (self.radius, self.radius), 0)
-        return input
-
-
-class RGB2BGR(object):
-    # Converts image from RGB order to BGR order, for model initialized from Caffe
-    def __call__(self, image, label):
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        return image, label
-
-
-class BGR2RGB(object):
-    # Converts image from BGR order to RGB order, for model initialized from Pytorch
-    def __call__(self, image, label):
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image, label
+            record['image'] = cv2.GaussianBlur(record['image'], (self.radius, self.radius), 0)
+        return record
 
 
 class Transforms(object):
