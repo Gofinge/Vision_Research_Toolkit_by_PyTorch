@@ -16,11 +16,13 @@ from utils.miscellaneous import mkdir, save_config
 from utils.logger import setup_logger
 from utils.collect_env import collect_env_info
 from utils.checkpoint import Checkpointer
+from utils.summary import make_summary_writer
 from configs.build import make_config
 from model.make_model import build_model
 from solver.build import make_optimizer, make_lr_scheduler
 from data.build import make_data_loader
 from engine.trainer import do_train
+
 
 
 def main():
@@ -137,13 +139,18 @@ def train(cfg, local_rank, distributed):
         start_iter=arguments["iteration"],
     )
 
-    test_period = cfg.SOLVER.TEST_PERIOD
-    if test_period > 0:
+    evaluate = cfg.SOLVER.EVALUATE
+    if evaluate:
         data_loader_val = make_data_loader(cfg, is_train=False, is_distributed=distributed, is_for_period=True)
     else:
         data_loader_val = None
 
-    checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
+    save_to_disk = get_rank() == 0
+    if cfg.SUMMARY_WRITER and save_to_disk:
+        save_dir = os.path.join(cfg.CHECKPOINTER.DIR, cfg.CHECKPOINTER.NAME)
+        summary_writer = make_summary_writer(cfg.SUMMARY_WRITER, save_dir, model_name=cfg.MODEL.NAME)
+    else:
+        summary_writer = None
 
     do_train(
         cfg,
@@ -154,9 +161,8 @@ def train(cfg, local_rank, distributed):
         scheduler,
         checkpointer,
         device,
-        checkpoint_period,
-        test_period,
         arguments,
+        summary_writer
     )
 
     return model

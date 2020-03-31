@@ -1,10 +1,10 @@
 import errno
-import json
-import logging
 import os
-from .comm import is_main_process
+import torch
 from tqdm import tqdm
-from collections import OrderedDict
+
+
+from .comm import is_main_process
 
 
 def mkdir(path):
@@ -21,24 +21,28 @@ def save_config(cfg, path):
             f.write(cfg.dump())
 
 
+def move_to_device(record, device):
+    for key, value in record.items():
+        if isinstance(value, torch.Tensor):
+            record[key] = value.to(device)
+        elif isinstance(value, (tuple, list)):
+            record[key] = [v.to(device) for v in value]
+        else:
+            record[key] = record[key]
+    return record
+
+
 class TqdmBar(object):
-    def __init__(self, data_loader=None, is_device0=None, total=0, description='', position=0, leave=False):
-        if is_device0 is not None:
-            self.bar = tqdm(enumerate(data_loader), total=total, position=position, leave=leave)
+    def __init__(self, data_loader, start_iter, distributed_rank, total=0, description='', position=0, leave=False, use_bar=True):
+        if distributed_rank > 0 and use_bar:
+            self.bar = tqdm(enumerate(data_loader, start_iter), total=total, position=position, leave=leave)
             self.bar.set_description(description)
         else:
-            self.bar = enumerate(data_loader)
+            self.bar = enumerate(data_loader, start_iter)
 
-    def set_postfix(self, lr, losses):
-        bar_info = OrderedDict()
-        bar_info['lr'] = lr
-        bar_info.update(**losses)
-
+    def set_postfix(self, info):
         if isinstance(self.bar, tqdm):
-            post_str = ""
-            for key in bar_info:
-                post_str += "{}={}, ".format(key, self.bar.format_num(bar_info[key]))
-            self.bar.set_postfix_str(post_str[0: -2])
+            self.bar.set_postfix(info)
 
     def close(self):
         if isinstance(self.bar, tqdm):

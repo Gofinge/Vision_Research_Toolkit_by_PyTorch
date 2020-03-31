@@ -52,18 +52,15 @@ class DatasetCatalog(object):
             "split": "test"
         }
     }
+    FACTORY = {"voc": "PascalVOCDataset"}
 
     @staticmethod
     def get(name):
         if "voc" in name:
             data_dir = DatasetCatalog.DATA_DIR
-            attrs = DatasetCatalog.DATASETS[name]
-            args = dict(
-                data_dir=os.path.join(data_dir, attrs["data_dir"]),
-                split=attrs["split"],
-            )
+            args = DatasetCatalog.DATASETS[name]
+            args["data_dir"] = os.path.join(data_dir, args["data_dir"])
             return dict(
                 name='voc',     # file name in data/datasets
-                factory="PascalVOCDataset",     # class name in data/datasets/name
                 args=args,
             )

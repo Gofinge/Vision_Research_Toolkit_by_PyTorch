@@ -5,6 +5,7 @@ import collections
 import math
 import random
 import numbers
+from configs.defaults import TRANSFORM
 
 
 class Compose(object):
@@ -18,6 +19,7 @@ class Compose(object):
         return input
 
 
+@TRANSFORM.register('ColorJitter')
 class ColorJitter(object):
     def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, center=1):
         self.brightness = [center - brightness, center + brightness]
@@ -121,6 +123,7 @@ class Normalize(object):
         return input
 
 
+@TRANSFORM.register('Resize')
 class Resize(object):
     # Resize the input to the given size, 'size' is a 2-element tuple or list in the order of (h, w).
     def __init__(self, a, b, mode="mm"):
@@ -193,6 +196,7 @@ class Resize(object):
         return input
 
 
+@TRANSFORM.register('RandScale')
 class RandScale(object):
     # Randomly resize image & label with scale factor in [scale_min, scale_max]
     def __init__(self, scale, aspect_ratio=None):
@@ -241,6 +245,7 @@ class RandScale(object):
         return input
 
 
+@TRANSFORM.register('PaddingAndResize')
 class PaddingAndResize(object):
     """Crops the given ndarray image (H*W*C or H*W).
     Args:
@@ -341,6 +346,7 @@ class PaddingAndResize(object):
         return input
 
 
+@TRANSFORM.register('Crop')
 class Crop(object):
     """Crops the given ndarray image (H*W*C or H*W).
     Args:
@@ -451,6 +457,177 @@ class Crop(object):
         return input
 
 
+@TRANSFORM.register('RandomSampleCrop')
+class RandomSampleCrop(object):
+    """Crop only support record with BBox (Demo)
+    Arguments:
+        img (Image): the image being input during training
+        boxes (Tensor): the original bounding boxes in pt form
+        labels (Tensor): the class labels for each bbox
+        mode (float tuple): the min and max jaccard overlaps
+    Return:
+        (img, boxes, classes)
+            img (Image): the cropped image
+            boxes (Tensor): the adjusted bounding boxes in pt form
+            labels (Tensor): the class labels for each bbox
+    """
+
+    def __init__(self, is_remove_empty=True):
+        self.sample_options = (
+            # using entire original input image
+            None,
+            # sample a patch s.t. MIN jaccard w/ obj in .1,.3,.4,.7,.9
+            (0.1, None),
+            (0.3, None),
+            (0.7, None),
+            (0.9, None),
+            # randomly sample a patch
+            (None, None),
+        )
+        self.is_remove_empty = is_remove_empty
+
+    def __call__(self, **record):
+        from numpy import random
+        if 'image' not in record:
+            raise IOError('Image not in data source.')
+        if 'bbox' not in record:
+            raise IOError('BBox not in data source.')
+        # guard against no boxes
+        boxes = record['bbox'].bbox
+        labels = record['bbox'].extra_fields["labels"]
+        if len(boxes) == 0:
+            return record
+        height, width, _ = record['image'].shape
+        while True:
+            # randomly choose a mode
+            mode = random.choice(self.sample_options)
+            if mode is None:
+                return record
+
+            min_iou, max_iou = mode
+            if min_iou is None:
+                min_iou = float("-inf")
+            if max_iou is None:
+                max_iou = float("inf")
+
+            # max trails (50)
+            for _ in range(50):
+                w = random.uniform(0.3 * width, width)
+                h = random.uniform(0.3 * height, height)
+
+                # aspect ratio constraint b/t .5 & 2
+                if h / w < 0.5 or h / w > 2:
+                    continue
+
+                left = random.uniform(width - w)
+                top = random.uniform(height - h)
+
+                # convert to integer rect x1, y1, x2, y2
+                rect = np.array([int(left), int(top), int(left + w), int(top + h)])
+
+                # calculate IoU (jaccard overlap) b/t the cropped and gt boxes
+                overlap = self.jaccard_numpy(np.array(boxes), rect)
+
+                # is min and max overlap constraint satisfied? if not try again
+                if overlap.max() < min_iou or overlap.min() > max_iou:
+                    continue
+                # keep overlap with gt box IF center in sampled patch
+                centers = (boxes[:, :2] + boxes[:, 2:]) / 2.0
+                # mask in all gt boxes that above and to the left of centers
+                m1 = (rect[0] < centers[:, 0]) * (rect[1] < centers[:, 1])
+                # mask in all gt boxes that under and to the right of centers
+                m2 = (rect[2] > centers[:, 0]) * (rect[3] > centers[:, 1])
+                # mask in that both m1 and m2 are true
+                mask = m1 * m2
+                # have any valid boxes? try again if not
+                if not mask.any():
+                    continue
+                # take only matching gt boxes
+                current_boxes = boxes[mask]
+                # take only matching gt labels
+                current_labels = labels[mask]
+                record["bbox"].bbox = current_boxes
+                record['bbox'].extra_fields["labels"] = current_labels
+
+                for key in record:
+                    if key == 'image':
+                        record[key] = record[key][rect[1]:rect[3], rect[0]:rect[2]]
+                    elif key == 'bbox':
+                        if record[key] is not None:
+                            record[key] = record[key].crop(rect, self.is_remove_empty)
+                    elif key == 'mask':
+                        if record[key] is not None:
+                            record[key] = record[key][rect[1]:rect[3], rect[0]:rect[2]]
+                    elif key == 'keypoint':
+                        if record[key] is not None and record[key].size:
+                            origin_shape = record[key].shape
+                            record[key] = np.reshape(record[key], (-1, 2))
+                            record[key] -= rect[0: 2]
+                            record[key] = np.reshape(record[key], origin_shape)
+                    else:
+                        raise ValueError('Unknown type of data source, can not be transformed.')
+                return record
+
+    def intersect(self, box_a, box_b):
+        max_xy = np.minimum(box_a[:, 2:], box_b[2:])
+        min_xy = np.maximum(box_a[:, :2], box_b[:2])
+        inter = np.clip((max_xy - min_xy), a_min=0, a_max=np.inf)
+        return inter[:, 0] * inter[:, 1]
+
+    def jaccard_numpy(self, box_a, box_b):
+        """Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
+        is simply the intersection over union of two boxes.
+        E.g.:
+            A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
+        Args:
+            box_a: Multiple bounding boxes, Shape: [num_boxes,4]
+            box_b: Single bounding box, Shape: [4]
+        Return:
+            jaccard overlap: Shape: [box_a.shape[0], box_a.shape[1]]
+        """
+        inter = self.intersect(box_a, box_b)
+        area_a = ((box_a[:, 2] - box_a[:, 0]) *
+                  (box_a[:, 3] - box_a[:, 1]))  # [A,B]
+        area_b = ((box_b[2] - box_b[0]) *
+                  (box_b[3] - box_b[1]))  # [A,B]
+        union = area_a + area_b - inter
+        return inter / union  # [A,B]
+
+
+@TRANSFORM.register('Expand')
+class Expand(object):
+    def __init__(self, mean):
+        self.mean = mean
+
+    def __call__(self, **record):
+        from numpy import random
+        if random.randint(2):
+            return record
+
+        height, width, depth = record['image'].shape
+        ratio = random.uniform(1, 4)
+        left = random.uniform(0, width * ratio - width)
+        top = random.uniform(0, height * ratio - height)
+
+        for key in record:
+            if key == 'image' or key == 'mask':
+                expand_image = np.zeros((int(height * ratio), int(width * ratio), depth), dtype=record[key].dtype)
+                expand_image[int(top):int(top + height), int(left):int(left + width)] = record[key]
+                record[key] = expand_image
+            elif key == 'bbox':
+                if record[key] is not None:
+                    record[key].bbox[:, :2] += torch.tensor([int(left), int(top)], dtype=torch.float)
+                    record[key].bbox[:, 2:] += torch.tensor([int(left), int(top)], dtype=torch.float)
+                    record[key].image_size = (height * ratio, width * ratio)
+            elif key == 'keypoint':
+                if record[key] is not None and record[key].size:
+                    pass
+            else:
+                raise ValueError('Unknown type of data source, can not be transformed.')
+        return record
+
+
+@TRANSFORM.register('RandRotate')
 class RandRotate(object):
     # Randomly rotate image & label with rotate factor in [rotate_min, rotate_max]
     def __init__(self, rotate, padding, ignore_label=255, p=0.5):
@@ -510,6 +687,7 @@ class RandRotate(object):
         return new_x, new_y
 
 
+@TRANSFORM.register('RandomHorizontalFlip')
 class RandomHorizontalFlip(object):
     def __init__(self, p=0.5):
         self.p = p
@@ -543,6 +721,7 @@ class RandomHorizontalFlip(object):
         return input
 
 
+@TRANSFORM.register('RandomVerticalFlip')
 class RandomVerticalFlip(object):
     def __init__(self, p=0.5):
         self.p = p
@@ -576,6 +755,7 @@ class RandomVerticalFlip(object):
         return input
 
 
+@TRANSFORM.register('RandomGaussianBlur')
 class RandomGaussianBlur(object):
     def __init__(self, radius=5):
         self.radius = radius
@@ -600,3 +780,21 @@ class BGR2RGB(object):
     def __call__(self, image, label):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return image, label
+
+
+class Transforms(object):
+    def __init__(self, trans_cfg):
+        transforms = []
+        for transform in trans_cfg:
+            name = transform['name']
+            args = transform['arg']
+            assert name in TRANSFORM, \
+                "Transform: {} is not registered in OPTIMIZER registry".format(
+                    name
+                )
+            transforms.append(TRANSFORM[name](**args))
+        self.compose = Compose(transforms)
+
+    def __call__(self, record):
+        record = self.compose(**record)
+        return record

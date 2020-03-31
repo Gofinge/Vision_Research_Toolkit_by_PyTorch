@@ -1,0 +1,50 @@
+MODEL:
+  NAME: "ssd"
+
+SOLVER:
+  OPTIMIZER:
+    NAME: "adam"
+  SCHEDULER:
+    NAME: "WarmupMultiStepLR"
+
+CHECKPOINTER:
+  DIR: "log/psp_voc"
+
+DATASET:
+    NAME: 'voc_det'
+    TRAIN_DIR: ("voc_2012_train", "voc_2012_val", "voc_2007_train", "voc_2007_val")
+    TEST_DIR: ("voc_2007_test",)
+    NUM_CLASS: 21
+    DATA_TYPE: ['mask']
+
+TRANSFORM:
+    TRAIN:
+        - name: RandRotate
+          rotate: [-10, 10]
+          padding: [0, 0, 0]
+          ignore_label: 255
+
+        - name: RandomGaussianBlur
+        - name: RandomHorizontalFlip
+        - name: ColorJitter
+          brightness: 0.2
+          contrast: 0.2
+          saturation: 0.5
+          hue: 0.2
+
+        - name: Expand
+          mean: [123.675, 116.28, 103.53]
+
+        - name: RandomSampleCrop
+          is_remove_empty: False
+
+        - name: Resize
+          a: 300
+          b: 300
+          mode: 'wh'
+
+    VAL:
+        - name: PaddingAndResize
+          size: [240, 320]
+          padding: [0, 0, 0]
+          ignore_label: 255

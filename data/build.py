@@ -10,7 +10,7 @@ from data.transforms.build import build_transforms
 from . import samplers
 
 
-def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
+def build_dataset(dataset_list, data_type, transforms, dataset_catalog, is_train=True):
     """
     Arguments:
         dataset_list (list[str]): Contains the names of the datasets, i.e.,
@@ -27,13 +27,15 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True):
     datasets = []
     for dataset_name in dataset_list:
         data = dataset_catalog.get(dataset_name)
+        name = data["name"]
         data_module = import_file(
-            os.path.join("data/datasets", data["name"]),
-            os.path.join(os.path.dirname(__file__), "datasets", data["name"]),
+            os.path.join("data/datasets", name),
+            os.path.join(os.path.dirname(__file__), "datasets", name),
             True
         )
-        factory = getattr(data_module, data["factory"])
+        factory = getattr(data_module, dataset_catalog.factory[name])
         args = data["args"]
+        args["data_type"] = data_type
         if data["factory"] == "PascalVOCDataset":
             args["use_difficult"] = not is_train
         args["transforms"] = transforms
@@ -151,10 +153,11 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
         "configs.paths_catalog", cfg.PATHS_CATALOG, True
     )
     dataset_catalog = paths_catalog.DatasetCatalog
-    dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
+    dataset_list = cfg.DATASET.TRAIN if is_train else cfg.DATASET.TEST
 
     transforms = build_transforms(cfg, is_train)
-    datasets = build_dataset(dataset_list, transforms, dataset_catalog, is_train or is_for_period)
+    datasets = build_dataset(dataset_list, cfg.DATASET.DATA_TYPE, transforms,
+                             dataset_catalog, is_train or is_for_period)
 
     data_loaders = []
     for dataset in datasets:

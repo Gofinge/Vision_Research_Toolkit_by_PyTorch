@@ -8,13 +8,16 @@ from utils.registry import Registry
 _C = CN()
 _C.NAME = "VRT by PyTorch"      # Which will be the name of logger
 _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
+_C.USE_BAR = True       # Whether use tqdm bar
+_C.SUMMARY_WRITER = "tensorboard"
 
 # Solver
 _C.SOLVER = CN()
 _C.SOLVER.IMS_PER_BATCH = 8
 _C.SOLVER.MAX_ITER = 100000
 _C.SOLVER.CHECKPOINT_PERIOD = 2500
-_C.SOLVER.TEST_PERIOD = 1
+_C.SOLVER.LOGGER_PERIOD = 20
+_C.SOLVER.EVALUATE = True    # whether do evaluation while saving checkpoints
 _C.SOLVER.OPTIMIZER = CN()
 _C.SOLVER.OPTIMIZER.NAME = "SGD"  # now support "SGD", "Adam"
 _C.SOLVER.SCHEDULER = CN()
@@ -32,11 +35,15 @@ _C.CHECKPOINTER.SAVE_EPOCH = 5
 _C.CHECKPOINTER.LOAD_NAME = ""  # if load_name is "", the checkpointer will load the latest checkpoint
 
 # Dataset
-_C.DATASETS = CN()
-_C.DATASETS.NAME = ""
-_C.DATASETS.TRAIN = ()      # TrainSet name in path_catalog.py
-_C.DATASETS.TEST = ()       # TestSet name in path_catalog.py
-_C.DATASETS.DATA_TYPE = []   # ["mask", "bbox", "keypoint"]
+_C.DATASET = CN()
+_C.DATASET.TRAIN = ()      # TrainSet name in path_catalog.py
+_C.DATASET.TEST = ()       # TestSet name in path_catalog.py
+_C.DATASET.DATA_TYPE = []   # ["mask", "bbox", "keypoint"]
+_C.DATASET.NUM_CLASS = 1
+
+# Transform
+# Transform can be set in yaml config file, follow the instruction in template
+_C.TRANSFORM = CN(new_allowed=True)
 
 # DataLoader
 _C.DATALOADER = CN()
@@ -58,7 +65,7 @@ SCHEDULER_CONFIG = Registry()
 MODEL = Registry()
 OPTIMIZER = Registry()
 SCHEDULER = Registry()
-TRANSFORMS = Registry()
+TRANSFORM = Registry()
 
 
 @OPTIMIZER_CONFIG.register("SGD")
