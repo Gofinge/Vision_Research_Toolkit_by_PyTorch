@@ -66,6 +66,7 @@ MODEL = Registry()
 OPTIMIZER = Registry()
 SCHEDULER = Registry()
 TRANSFORM = Registry()
+INFERENCE = Registry()
 
 
 @OPTIMIZER_CONFIG.register("SGD")

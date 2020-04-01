@@ -140,7 +140,9 @@ def train(cfg, local_rank, distributed):
 
     evaluate = cfg.SOLVER.EVALUATE
     if evaluate:
+        synchronize()
         data_loader_val = make_data_loader(cfg, is_train=False, is_distributed=distributed, is_for_period=True)
+        synchronize()
     else:
         data_loader_val = None
 
