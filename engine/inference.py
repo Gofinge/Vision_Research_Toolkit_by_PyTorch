@@ -2,6 +2,7 @@
 import logging
 import torch
 import numpy as np
+import time
 
 from data.structures.bounding_box import bbox_list_to_np
 from torch.nn.parallel import DistributedDataParallel
@@ -196,27 +197,26 @@ def detection_inference(cfg, model, data_loader_val, device, iteration, summary_
                   description='Inference', use_bar=cfg.USE_BAR)
     for iteration, record in bar.bar:
         record = move_to_device(record, device)
-
         prediction = model(record)
-
         prediction = prediction.cpu().detach()
         record = move_to_device(record, torch.device('cpu'))
 
         mAP.calculate_overlaps(record, prediction)
         if visualize:
-            # TODO vis module
+            # TODO vis mod
             pass
+    bar.close()
 
     mAP_5095, mAP_50, m_recall = mAP.calculate_map()
 
     if logger is not None:
         logger.info('====================================================================================')
-        logger.info('Average inference time per image without post process is: %s' % (
-                sum(model.inference_time_without_postprocess) / max(len(model.inference_time_without_postprocess),
-                                                                    np.finfo(np.float64).eps)))
-        logger.info('Average inference time per image with post process is: %s' % (
-                sum(model.inference_time_with_postprocess) / max(len(model.inference_time_with_postprocess),
-                                                                 np.finfo(np.float64).eps)))
+        # logger.info('Average inference time per image without post process is: %s' % (
+        #         sum(model.inference_time_without_postprocess) / max(len(model.inference_time_without_postprocess),
+        #                                                             np.finfo(np.float64).eps)))
+        # logger.info('Average inference time per image with post process is: %s' % (
+        #         sum(model.inference_time_with_postprocess) / max(len(model.inference_time_with_postprocess),
+        #                                                          np.finfo(np.float64).eps)))
 
         logger.info('mAP(@iou=0.5:0.95): %s' % mAP_5095)
         logger.info('mAP(@iou=0.5): %s' % mAP_50)
