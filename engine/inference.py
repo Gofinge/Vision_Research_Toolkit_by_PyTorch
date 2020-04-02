@@ -9,7 +9,6 @@ from utils.miscellaneous import TqdmBar, move_to_device
 from utils.comm import get_rank
 from utils.metric_logger import MetricLogger
 from utils.summary import write_summary
-from utils.vis import visualize_bbox_from_BoxNumpy
 from configs.defaults import INFERENCE
 
 
@@ -193,22 +192,20 @@ class MeanOfIntersectionOverUnion(object):
 def detection_inference(cfg, model, data_loader_val, device, iteration, summary_writer=None, logger=None,
                         visualize=False, fppi=(0.1, 0.01)):
     mAP = MeanOfAveragePrecision(cfg.DATASET.NUM_CLASS, cfg.DATASET.MAX_OBJECTS, fppi=fppi)
-    is_device = None if visualize else visualize
     bar = TqdmBar(data_loader_val, 0, get_rank(), data_loader_val.__len__(),
                   description='Inference', use_bar=cfg.USE_BAR)
     for iteration, record in bar.bar:
-        if iteration > cfg.TEST.MAX_ITERATION:
-            break
         record = move_to_device(record, device)
 
         prediction = model(record)
 
         prediction = prediction.cpu().detach()
-        record = move_to_device(record, 'cpu')
+        record = move_to_device(record, torch.device('cpu'))
 
         mAP.calculate_overlaps(record, prediction)
         if visualize:
-            visualize_bbox_from_BoxNumpy(cfg, record, prediction, iteration, logger)
+            # TODO vis module
+            pass
 
     mAP_5095, mAP_50, m_recall = mAP.calculate_map()
 
@@ -234,8 +231,8 @@ def detection_inference(cfg, model, data_loader_val, device, iteration, summary_
 
 
 def build_inference(cfg):
-    if cfg.MODEL.MODEL.upper() in INFERENCE.keys():
-        return INFERENCE[cfg.MODEL.MODEL.upper()]
+    if cfg.MODEL.NAME.upper() in INFERENCE.keys():
+        return INFERENCE[cfg.MODEL.NAME.upper()]
     else:
         raise ValueError('Unknown model type! Please confirm your config file.')
 
@@ -249,30 +246,31 @@ def do_evaluation(cfg, model, data_loader_val, device, arguments, summary_writer
         model = model.module
     model.eval()
     meters_val = MetricLogger(delimiter="  ")
-    bar = TqdmBar(data_loader_val, 0, get_rank(), data_loader_val.__len__(),
-                  description='Validation', use_bar=cfg.USE_BAR)
-    for iteration, record in bar.bar:
-        record = move_to_device(record, device)
-        loss, prediction = model(record)
-        # reduce losses over all GPUs for logging purposes
-        loss_reduced = {key: value.cpu().item() for key, value in loss.items()}
-        meters_val.update(**loss_reduced)
-    bar.close()
-    logger.info(
-        meters_val.delimiter.join(
-            [
-                "[Validation]: ",
-                "iter: {iter}",
-                "{meters}",
-                "mem: {memory:.0f}",
-            ]
-        ).format(
-            iter=arguments["iteration"],
-            meters=str(meters_val),
-            memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
-        )
-    )
-    record = {name: meter.global_avg for name, meter in MetricLogger.meters}
+    # TODO: add compare module which can test sampled train set
+    # bar = TqdmBar(data_loader_val, 0, get_rank(), data_loader_val.__len__(),
+    #               description='Validation', use_bar=cfg.USE_BAR)
+    # for iteration, record in bar.bar:
+    #     record = move_to_device(record, device)
+    #     loss, prediction = model(record)
+    #     # reduce losses over all GPUs for logging purposes
+    #     loss_reduced = {key: value.cpu().item() for key, value in loss.items()}
+    #     meters_val.update(**loss_reduced)
+    # bar.close()
+    # logger.info(
+    #     meters_val.delimiter.join(
+    #         [
+    #             "[Validation]: ",
+    #             "iter: {iter}",
+    #             "{meters}",
+    #             "mem: {memory:.0f}",
+    #         ]
+    #     ).format(
+    #         iter=arguments["iteration"],
+    #         meters=str(meters_val),
+    #         memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+    #     )
+    # )
+    record = {name: meter.global_avg for name, meter in meters_val.meters}
     write_summary(summary_writer, arguments["iteration"], record=record, group='Valid_Losses')
 
     inference = build_inference(cfg)

@@ -1,6 +1,6 @@
 import torch
 
-from model.ssd.utils.nms import batched_nms
+from model.det.ssd.utils.nms import batched_nms
 
 
 class PostProcessor:

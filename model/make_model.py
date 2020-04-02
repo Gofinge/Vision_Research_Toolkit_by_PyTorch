@@ -3,7 +3,7 @@ from configs.defaults import MODEL
 
 
 # register SSD
-@MODEL.register('ssd')
+@MODEL.register('SSD')
 def generate_model(cfg):
     from model.det.ssd.ssd import SSDDetector as SSDNet
     from model.det.ssd.ssd import NetWrapper as SSDNetWrapper
@@ -16,4 +16,4 @@ def build_model(cfg):
             cfg.MODEL.NAME.upper()
         )
 
-    return MODEL[cfg.MODEL.upper()](cfg)
+    return MODEL[cfg.MODEL.NAME.upper()](cfg)

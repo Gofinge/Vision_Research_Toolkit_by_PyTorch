@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from model.ssd.utils import box_utils
+from model.det.ssd.utils import box_utils
 
 
 class PriorMatcher:

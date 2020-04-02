@@ -4,7 +4,7 @@ import sys
 
 import torch
 
-from model.ssd.utils.dist_util import is_main_process, synchronize
+from model.det.ssd.utils.dist_util import is_main_process, synchronize
 
 try:
     from torch.hub import _download_url_to_file

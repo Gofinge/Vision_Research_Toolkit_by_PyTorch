@@ -26,8 +26,8 @@ def do_train(
     # get logger
     logger = logging.getLogger(cfg.NAME)
     logger.info("Start training ...")
-    logger.info('Size of training dataset: %s' % (data_loader_train.__len__() * cfg.SOLVER.IMS_PER_BATCH))
-    logger.info('Size of validation dataset: %s' % (data_loader_val.__len__() * cfg.TEST.IMS_PER_BATCH))
+    logger.info("Size of training dataset: %s" % (data_loader_train.dataset.__len__()))
+    logger.info("Size of validation dataset: %s" % (data_loader_val.dataset.__len__()))
 
     model.train()
 
@@ -37,7 +37,7 @@ def do_train(
     start_training_time = time.time()
     end = time.time()
     bar = TqdmBar(data_loader_train, start_iter, get_rank(), data_loader_train.__len__(),
-                  description='Training', use_bar=cfg.USE_BAR)
+                  description="Training", use_bar=cfg.USE_BAR)
 
     for iteration, record in bar.bar:
         data_time = time.time() - end
@@ -45,9 +45,9 @@ def do_train(
         arguments["iteration"] = iteration
         record = move_to_device(record, device)
 
-        loss, prediction = model(record)
+        loss, _ = model(record)
         optimizer.zero_grad()
-        loss['total_loss'].backward()
+        loss["total_loss"].backward()
         optimizer.step()
         scheduler.step()
 
@@ -62,7 +62,7 @@ def do_train(
         eta_seconds = meters.time.global_avg * (max_iter - iteration)
         eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
         lr = optimizer.param_groups[0]["lr"]
-        bar.set_postfix(loss)
+        bar.set_postfix({"lr": lr, "total_loss": loss_reduced["total_loss"]})
 
         if iteration % cfg.SOLVER.LOGGER_PERIOD == 0 or iteration == max_iter:
             bar.clear(nolock=True)
@@ -89,12 +89,12 @@ def do_train(
                 write_summary(summary_writer, iteration, record={'lr': lr}, group='LR')
 
         if iteration % cfg.SOLVER.CHECKPOINT_PERIOD == 0:
+            bar.clear(nolock=True)
             checkpointer.save("model_{:07d}".format(iteration), **arguments)
             if data_loader_val is not None:
                 do_evaluation(cfg, model, data_loader_val, device, arguments, summary_writer)
 
-        if iteration == max_iter:
-            checkpointer.save("model_final", **arguments)
+    checkpointer.save("model_final", **arguments)
 
     bar.close()
     total_training_time = time.time() - start_training_time

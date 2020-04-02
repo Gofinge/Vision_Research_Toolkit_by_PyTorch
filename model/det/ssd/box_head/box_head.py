@@ -1,10 +1,10 @@
 from torch import nn
 import torch.nn.functional as F
 
-from model.ssd.utils import registry
-from model.ssd.anchors.prior_box import PriorBox
-from model.ssd.box_head.box_predictor import make_box_predictor
-from model.ssd.utils import box_utils
+from model.det.ssd.utils import registry
+from model.det.ssd.anchors.prior_box import PriorBox
+from model.det.ssd.box_head.box_predictor import make_box_predictor
+from model.det.ssd.utils import box_utils
 from .post_processor import PostProcessor
 from .loss import MultiBoxLoss
 

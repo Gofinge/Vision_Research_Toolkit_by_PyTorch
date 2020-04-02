@@ -1,4 +1,4 @@
-from model.ssd.utils import registry
+from model.det.ssd.utils import registry
 from .vgg import VGG
 from .mobilenet import MobileNetV2
 from .efficient_net import EfficientNet

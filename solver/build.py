@@ -37,14 +37,14 @@ def make_optimizer(cfg, model):
             cfg.SOLVER.OPTIMIZER.NAME.upper
         )
 
-    return OPTIMIZER[cfg.SOLVER.OPTIMIZER.NAME.upper](cfg, model)
+    return OPTIMIZER[cfg.SOLVER.OPTIMIZER.NAME.upper()](cfg, model)
 
 
 # Make and register Scheduler
 
 
-@SCHEDULER.register("WARMUPMUTISTEPLR")
-def make_warmup_muti_step_lr_scheduler(cfg, optimizer):
+@SCHEDULER.register("WARMUPMULTISTEPLR")
+def make_warmup_multi_step_lr_scheduler(cfg, optimizer):
     return WarmupMultiStepLR(
         optimizer,
         cfg.SOLVER.SCHEDULER.STEPS,
@@ -56,9 +56,9 @@ def make_warmup_muti_step_lr_scheduler(cfg, optimizer):
 
 
 def make_lr_scheduler(cfg, optimizer):
-    assert cfg.SOLVER.SCHEDULER.NAME.upper() in OPTIMIZER, \
+    assert cfg.SOLVER.SCHEDULER.NAME.upper() in SCHEDULER, \
         "cfg.SOLVER.SCHEDULER.NAME: {} are not registered in SCHEDULER registry".format(
-            cfg.SOLVER.SCHEDULER.NAME.upper
+            cfg.SOLVER.SCHEDULER.NAME.upper()
         )
 
-    return SCHEDULER[cfg.SOLVER.SCHEDULER.NAME.upper](cfg, optimizer)
+    return SCHEDULER[cfg.SOLVER.SCHEDULER.NAME.upper()](cfg, optimizer)

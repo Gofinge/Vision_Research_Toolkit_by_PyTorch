@@ -9,7 +9,7 @@ import collections
 import torch
 from torch import nn
 from torch.nn import functional as F
-from model.ssd.utils.model_zoo import load_state_dict_from_url
+from model.det.ssd.utils.model_zoo import load_state_dict_from_url
 
 # Parameters for the entire model (stem, all blocks, and head)
 

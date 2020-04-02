@@ -80,6 +80,7 @@ class ColorJitter(object):
         return im.astype(img.dtype)
 
 
+@TRANSFORM.register("ToTensor")
 class ToTensor(object):
     # Converts numpy.ndarray (H x W x C) to a torch.FloatTensor of shape (C x H x W).
     def __call__(self, **record):
@@ -103,6 +104,7 @@ class ToTensor(object):
         return record
 
 
+@TRANSFORM.register("Normalize")
 class Normalize(object):
     # Normalize tensor with mean and standard deviation along channel: channel = (channel - mean) / std
     def __init__(self, mean, std=None):
@@ -776,7 +778,7 @@ class Transforms(object):
         transforms = []
         for transform in trans_cfg:
             name = transform['name']
-            args = transform['arg']
+            args = transform['args'] if 'args' in transform else {}
             assert name in TRANSFORM, \
                 "Transform: {} is not registered in OPTIMIZER registry".format(
                     name

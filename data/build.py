@@ -30,13 +30,13 @@ def build_dataset(dataset_list, data_type, transforms, dataset_catalog, is_train
         name = data["name"]
         data_module = import_file(
             os.path.join("data/datasets", name),
-            os.path.join(os.path.dirname(__file__), "datasets", name),
+            os.path.join(os.path.dirname(__file__), "datasets", name + ".py"),
             True
         )
-        factory = getattr(data_module, dataset_catalog.factory[name])
+        factory = getattr(data_module, dataset_catalog.FACTORY[name])
         args = data["args"]
         args["data_type"] = data_type
-        if data["factory"] == "PascalVOCDataset":
+        if dataset_catalog.FACTORY[name] == "PascalVOCDataset":
             args["use_difficult"] = not is_train
         args["transforms"] = transforms
         # make dataset from factory

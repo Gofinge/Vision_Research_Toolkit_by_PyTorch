@@ -1,7 +1,7 @@
 from torch import nn
 
-from model.ssd.utils import registry
-from model.ssd.utils.model_zoo import load_state_dict_from_url
+from model.det.ssd.utils import registry
+from model.det.ssd.utils.model_zoo import load_state_dict_from_url
 
 model_urls = {
     'mobilenet_v2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',

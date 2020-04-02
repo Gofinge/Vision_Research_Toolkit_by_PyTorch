@@ -69,8 +69,8 @@ class PascalVOCDataset(torch.utils.data.Dataset):
             mask = cv2.imread(self._mask_path % img_id, cv2.IMREAD_GRAYSCALE)
             record['mask'] = mask
 
-        if self.transform is not None:
-            record = self.transform(record, self.mode)
+        if self.transforms is not None:
+            record = self.transforms(record)
             return record
         else:
             return None

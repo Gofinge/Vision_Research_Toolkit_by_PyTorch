@@ -34,8 +34,9 @@ def move_to_device(record, device):
 
 
 class TqdmBar(object):
-    def __init__(self, data_loader, start_iter, distributed_rank, total=0, description='', position=0, leave=False, use_bar=True):
-        if distributed_rank > 0 and use_bar:
+    def __init__(self, data_loader, start_iter, distributed_rank,
+                 total=0, description='', position=0, leave=False, use_bar=True):
+        if distributed_rank == 0 and use_bar:
             self.bar = tqdm(enumerate(data_loader, start_iter), total=total, position=position, leave=leave)
             self.bar.set_description(description)
         else:

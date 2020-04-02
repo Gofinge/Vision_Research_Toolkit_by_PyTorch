@@ -1,8 +1,8 @@
 from torch import nn, stack
-from model.ssd.backbone import build_backbone
-from model.ssd.box_head import build_box_head
-from model.ssd.utils.prior_matcher import PriorMatcher
-from model.ssd.anchors.prior_box import PriorBox
+from model.det.ssd.backbone import build_backbone
+from model.det.ssd.box_head import build_box_head
+from model.det.ssd.utils.prior_matcher import PriorMatcher
+from model.det.ssd.anchors.prior_box import PriorBox
 
 
 class SSDDetector(nn.Module):
@@ -41,10 +41,9 @@ class NetWrapper(nn.Module):
                 labels_list.append(labels)
 
             targets = {'boxes': stack(boxes_list), 'labels': stack(labels_list)}
-            losses, result = self.net(image, targets)
+            losses, prediction = self.net(image, targets)
             total_loss = sum(loss for loss in losses.values())
             loss = {'total_loss': total_loss, 'reg_loss': losses['reg_loss'], 'cls_loss': losses['cls_loss']}
-            prediction = (result,)
             return loss, prediction
         else:
             prediction = self.net(image)

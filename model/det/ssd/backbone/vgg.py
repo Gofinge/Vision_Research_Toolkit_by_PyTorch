@@ -1,9 +1,9 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model.ssd.layers import L2Norm
-from model.ssd.utils import registry
-from model.ssd.utils.model_zoo import load_state_dict_from_url
+from model.det.ssd.layers import L2Norm
+from model.det.ssd.utils import registry
+from model.det.ssd.utils.model_zoo import load_state_dict_from_url
 
 model_urls = {
     'vgg': 'https://s3.amazonaws.com/amdegroot-models/vgg16_reducedfc.pth',

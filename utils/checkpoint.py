@@ -15,7 +15,7 @@ class Checkpointer(object):
         self.scheduler = scheduler
         self.save_dir = save_dir
         self.save_to_disk = save_to_disk
-        if logger in None:
+        if logger is None:
             logger = logging.getLogger(__name__)
         self.logger = logger
 
