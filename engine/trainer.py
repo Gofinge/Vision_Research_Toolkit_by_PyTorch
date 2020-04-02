@@ -85,8 +85,8 @@ def do_train(
             )
 
             if summary_writer:
-                write_summary(summary_writer, iteration, record=loss, group='losses')
-                write_summary(summary_writer, iteration, record={'lr': lr}, group='lr')
+                write_summary(summary_writer, iteration, record=loss, group='Losses')
+                write_summary(summary_writer, iteration, record={'lr': lr}, group='LR')
 
         if iteration % cfg.SOLVER.CHECKPOINT_PERIOD == 0:
             checkpointer.save("model_{:07d}".format(iteration), **arguments)
@@ -104,6 +104,7 @@ def do_train(
             total_time_str, total_training_time / max_iter
         )
     )
+
 
 
 
