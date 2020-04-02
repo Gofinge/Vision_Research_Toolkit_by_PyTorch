@@ -135,7 +135,7 @@ def get_ssd_config():
 
     # Test
     _C.TEST.NMS_THRESHOLD = 0.45
-    _C.TEST.CONFIDENCE_THRESHOLD = 0.01
+    _C.TEST.CONFIDENCE_THRESHOLD = 0.05
 
     _C.INPUT = CN()
     _C.INPUT.DIMS = (300, 300)

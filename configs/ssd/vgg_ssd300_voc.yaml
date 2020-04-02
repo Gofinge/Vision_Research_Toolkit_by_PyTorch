@@ -22,7 +22,7 @@ INPUT:
     DIMS: (300, 300)
 
 SOLVER:
-  CHECKPOINT_PERIOD: 10
+  CHECKPOINT_PERIOD: 2500
   OPTIMIZER:
     NAME: "adam"
   SCHEDULER:
@@ -72,7 +72,7 @@ TRANSFORM:
     - name: Normalize
       args:
         mean: [123.675, 116.28, 103.53]
-        std: [58.395, 57.120, 57.375]
+#        std: [58.395, 57.120, 57.375]
 
   VAL:
     - name: PaddingAndResize
@@ -85,4 +85,4 @@ TRANSFORM:
     - name: Normalize
       args:
         mean: [123.675, 116.28, 103.53]
-        std: [58.395, 57.120, 57.375]
+#        std: [58.395, 57.120, 57.375]

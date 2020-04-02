@@ -41,6 +41,7 @@ class PostProcessor:
 
             boxes[:, 0::2] *= self.width
             boxes[:, 1::2] *= self.height
+            print(len(boxes))
 
             keep = batched_nms(boxes, scores, labels, self.cfg.TEST.NMS_THRESHOLD)
             # keep only topk scoring predictions

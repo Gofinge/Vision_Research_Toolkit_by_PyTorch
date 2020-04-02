@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Author: Xiaoyang Wu (gofinge@foxmail.com)
 r"""
 Basic training script for PyTorch
